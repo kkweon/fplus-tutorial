@@ -2,6 +2,11 @@
   - [Installation](#sec-1-1)
   - [Check installation](#sec-1-2)
 - [Correctness follows from expressive](#sec-2)
+- [Type annotations](#sec-3)
+  - [Variables](#sec-3-1)
+  - [map](#sec-3-2)
+  - [Function](#sec-3-3)
+  - [Why useful?](#sec-3-4)
 
 
 # Introduction<a id="sec-1"></a>
@@ -122,3 +127,74 @@ int main() {
     [1, 4, 9, 16, 25, 36, 49, 64, 81]
     [4, 16, 36, 64]
     [4, 16, 36, 64]
+
+# Type annotations<a id="sec-3"></a>
+
+Type annotations are used to browse the [FunctionalPlus API Search](http://www.editgym.com/fplus-api-search/).
+
+-   Type variables are written in lower case such as `a`, `b`, &#x2026;
+-   Fixed types starts with a Uppercase letter such as `Int`, `String`, `Bool`
+
+## Variables<a id="sec-3-1"></a>
+
+Variables can be expressed in the following way
+
+```C++
+int x;              // x : Int
+vector<int> xs;     // xs: [Int]
+pair<int, float> p; // p : (Int, Float)
+```
+
+## map<a id="sec-3-2"></a>
+
+In C++, `map` is like an `dict` in Python
+
+```C++
+map<string, int> dict; // dict : Map String Int
+```
+
+## Function<a id="sec-3-3"></a>
+
+```C++
+int foo(string value);                              // foo : String -> Int
+ContainerIn transform(F f, const ContainerOut& xs); // transform : ((a -> b), [a]) -> [b]
+```
+
+Previous `keep_if` can be written as
+
+```C++
+Container keep_if(F f, Container& container); // keep_if : ((a -> Bool), [a]) -> [a]
+```
+
+## Why useful?<a id="sec-3-4"></a>
+
+Suppose I want a `concat` function as below.
+
+```C++
+concat(["Bar", "Baz", "Buz"], ";") == "bar;baz;buz"
+```
+
+We know
+
+```C++
+concat(vector<string> container, string delim); // 
+```
+
+If we type the following annotation in the API browser, `(vector<string>, string)->string`
+
+we get
+
+    (vector<string>,string)->string
+    as parsed type: ([String], String) -> String
+    ---------------------------------------------------------
+    join : ([a], [[a]]) -> [a]
+    fwd::join : [a] -> [[a]] -> [a]
+    Inserts a separator sequence in between the elements
+    of a sequence of sequences and concatenates the result.
+    Also known as intercalate.
+    join(", ", "["a", "bee", "cee"]) == "a, bee, cee"
+    join([0, 0], [[1], [2], [3, 4]]) == [1, 0, 0, 2, 0, 0, 3, 4]
+    
+    template <typename Container,
+        typename X = typename Container::value_type>
+    X join(const X& separator, const Container& xs)

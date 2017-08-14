@@ -129,3 +129,72 @@
 
 
 
+
+* Type annotations
+Type annotations are used to browse the [[http://www.editgym.com/fplus-api-search/][FunctionalPlus API Search]].
+
+- Type variables are written in lower case such as ~a~, ~b~, ...
+- Fixed types starts with a Uppercase letter such as ~Int~, ~String~, ~Bool~
+
+** Variables
+Variables can be expressed in the following way
+#+BEGIN_SRC C++
+int x;              // x : Int
+vector<int> xs;     // xs: [Int]
+pair<int, float> p; // p : (Int, Float)
+#+END_SRC
+
+** map
+In C++, ~map~ is like an ~dict~ in Python
+
+#+BEGIN_SRC C++
+map<string, int> dict; // dict : Map String Int
+#+END_SRC
+
+** Function
+
+#+BEGIN_SRC C++
+int foo(string value);                              // foo : String -> Int
+ContainerIn transform(F f, const ContainerOut& xs); // transform : ((a -> b), [a]) -> [b]
+#+END_SRC
+
+
+Previous ~keep_if~ can be written as 
+#+BEGIN_SRC C++
+Container keep_if(F f, Container& container); // keep_if : ((a -> Bool), [a]) -> [a]
+#+END_SRC
+
+** Why useful?
+Suppose I want a ~concat~ function as below.
+#+BEGIN_SRC C++
+concat(["Bar", "Baz", "Buz"], ";") == "bar;baz;buz"
+#+END_SRC
+
+We know 
+
+#+BEGIN_SRC C++
+concat(vector<string> container, string delim); // 
+#+END_SRC
+
+If we type the following annotation in the API browser,
+=(vector<string>, string)->string=
+
+
+we get
+
+#+BEGIN_EXAMPLE
+(vector<string>,string)->string
+as parsed type: ([String], String) -> String
+---------------------------------------------------------
+join : ([a], [[a]]) -> [a]
+fwd::join : [a] -> [[a]] -> [a]
+Inserts a separator sequence in between the elements
+of a sequence of sequences and concatenates the result.
+Also known as intercalate.
+join(", ", "["a", "bee", "cee"]) == "a, bee, cee"
+join([0, 0], [[1], [2], [3, 4]]) == [1, 0, 0, 2, 0, 0, 3, 4]
+
+template <typename Container,
+    typename X = typename Container::value_type>
+X join(const X& separator, const Container& xs)
+#+END_EXAMPLE
