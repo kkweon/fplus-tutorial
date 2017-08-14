@@ -7,7 +7,7 @@
 - Go to https://github.com/Dobiasd/FunctionalPlus
 - Follow the instruction
 ** Check installation
-#+BEGIN_SRC C++ :flags -std=c++1z
+#+BEGIN_SRC C++ :flags -std=c++1z :exports both
   #include <fplus/fplus.hpp>
   #include <iostream>
 
@@ -22,7 +22,7 @@
 : All things being equal.
 
 
-#+BEGIN_SRC C++ :flags -std=c++1z
+#+BEGIN_SRC C++ :flags -std=c++1z :exports both
   #include <fplus/fplus.hpp>
   #include <iostream>
 
@@ -41,7 +41,7 @@
 
 - Define a =map= function ((a -> b), [a]) -> [a]
 - Define a =keep_if= function ((a -> b), [a]) -> [a]
-#+BEGIN_SRC C++
+#+BEGIN_SRC C++ :exports both :results output
   #include <algorithm>
   #include <fplus/fplus.hpp>
   #include <iostream>
@@ -115,19 +115,11 @@
 #+END_SRC
 
 #+RESULTS:
-| [1 |  2 |  3 |   4 |  5 |  6 |  7 |  8 | 9]  |
-| [1 |  4 |  9 |  16 | 25 | 36 | 49 | 64 | 81] |
-| [1 |  4 |  9 |  16 | 25 | 36 | 49 | 64 | 81] |
-| [4 | 16 | 36 | 64] |    |    |    |    |     |
-| [4 | 16 | 36 | 64] |    |    |    |    |     |
-
-
-
-
-
-
-
-
+: [1, 2, 3, 4, 5, 6, 7, 8, 9]
+: [1, 4, 9, 16, 25, 36, 49, 64, 81]
+: [1, 4, 9, 16, 25, 36, 49, 64, 81]
+: [4, 16, 36, 64]
+: [4, 16, 36, 64]
 
 
 * Type annotations
@@ -166,13 +158,13 @@ Container keep_if(F f, Container& container); // keep_if : ((a -> Bool), [a]) ->
 
 ** Why useful?
 Suppose I want a ~concat~ function as below.
-#+BEGIN_SRC C++
+#+BEGIN_SRC C++ :exports both
 concat(["Bar", "Baz", "Buz"], ";") == "bar;baz;buz"
 #+END_SRC
 
 We know 
 
-#+BEGIN_SRC C++
+#+BEGIN_SRC C++ :exports both
 concat(vector<string> container, string delim); // 
 #+END_SRC
 
