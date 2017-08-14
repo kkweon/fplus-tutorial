@@ -1,4 +1,4 @@
-#+PROPERTY: header-args :flags -std=c++1z :exports both
+#+PROPERTY: header-args :flags -std=c++1z :exports both :results output
 #+TITLE: Functional Programming in C++ w/ FPLUS
 
 * Introduction
