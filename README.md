@@ -8,6 +8,9 @@
   - [Function](#sec-3-3)
   - [Why useful?](#sec-3-4)
 - [Parse and Product](#sec-4)
+- [Lambda Expression](#sec-5)
+  - [Example](#sec-5-1)
+- [Problem with comments](#sec-6)
 
 
 # Introduction<a id="sec-1"></a>
@@ -63,10 +66,6 @@ int main() {
 
 using namespace std;
 
-struct square {
-  template <typename T> T operator()(T val) { return val * val; }
-};
-
 template<typename T>
 T square_fn(T val) {
   return val * val;
@@ -103,15 +102,15 @@ vector<T> keep_if(Function f, const vector<T>& container) {
 
 
 int main() {
-  vector<int> result{1, 2, 3, 4, 5, 6, 7, 8, 9};
-  print_vec(result);
+  vector<int> prod_result{1, 2, 3, 4, 5, 6, 7, 8, 9};
+  print_vec(prod_result);
 
   /// my transform function
-  auto squared = my_transform(square_fn<int>, result);
+  auto squared = my_transform(square_fn<int>, prod_result);
   print_vec(squared);
 
   /// fplus function
-  auto fplus_squared = fplus::transform(square_fn<int>, result);
+  auto fplus_squared = fplus::transform(square_fn<int>, prod_result);
   print_vec(fplus_squared);
 
   auto is_even = [](auto val) {
@@ -196,7 +195,7 @@ we get
     join : ([a], [[a]]) -> [a]
     fwd::join : [a] -> [[a]] -> [a]
     Inserts a separator sequence in between the elements
-    of a sequence of sequences and concatenates the result.
+    of a sequence of sequences and concatenates the prod_result.
     Also known as intercalate.
     join(", ", "["a", "bee", "cee"]) == "a, bee, cee"
     join([0, 0], [[1], [2], [3, 4]]) == [1, 0, 0, 2, 0, 0, 3, 4]
@@ -219,9 +218,9 @@ Given
 #include <sstream>
 
 int str2int(const std::string& str) {
-  int result;
-  std::istringstream(str) >> result;
-  return result;
+  int prod_result;
+  std::istringstream(str) >> prod_result;
+  return prod_result;
 }
 int main() {
   const std::string input {"1, 5, 4, 7, 2, 2, 3"};
@@ -253,9 +252,9 @@ struct addition {
 };
 
 int str2int(const std::string& str) {
-  int result;
-  std::istringstream(str) >> result;
-  return result;
+  int prod_result;
+  std::istringstream(str) >> prod_result;
+  return prod_result;
 }
 
 int main() {
@@ -271,3 +270,126 @@ int main() {
 
     [1, 5, 4]
     10
+
+# Lambda Expression<a id="sec-5"></a>
+
+In C++, a lambda function can be expressed as `[capture](parameters) {body}`
+
+```C++
+int val = 10;
+const auto add_val = [val](int x) -> int { return x + val; };
+std::cout << add_val(10) << std::endl;
+val = 15;
+std::cout << add_val(20) << std::endl;
+```
+
+    20
+    30
+
+```C++
+int val = 10;
+const auto add_val = [&val](int x) -> int { return x + val; };
+std::cout << add_val(10) << std::endl;
+val = 15;
+std::cout << add_val(20) << std::endl;
+```
+
+    20
+    35
+
+## Example<a id="sec-5-1"></a>
+
+Given
+
+polygon : [(Int, Int)]
+
+Find the longest edge
+
+```C++
+#include <fplus/fplus.hpp>
+#include <iostream>
+#include <vector>
+
+using point = std::pair<float, float>;
+
+float get_dist(const point& a, const point& b) {
+  auto square = [](auto val) { return val * val; };
+  const auto x_diff = a.first - b.first;
+  const auto y_diff = a.second - b.second;
+
+  return std::sqrt(square(x_diff) + square(y_diff));
+}
+
+int main() {
+  std::vector<point> polygon{{1, 2}, {7, 3}, {6, 5}, {4, 4}, {2, 9}};
+  std::cout << fplus::show(polygon) << std::endl;
+
+  const auto each_pairs = fplus::overlapping_pairs_cyclic(polygon);
+  std::cout << fplus::show(each_pairs) << std::endl;
+
+  const auto max_distance = fplus::maximum_on(
+      [](const auto& point_pair) -> float {
+        return get_dist(point_pair.first, point_pair.second);
+      },
+      each_pairs);
+  std::cout << fplus::show(max_distance) << std::endl;
+
+  return 0;
+}
+```
+
+    [(1, 2), (7, 3), (6, 5), (4, 4), (2, 9)]
+    [((1, 2), (7, 3)), ((7, 3), (6, 5)), ((6, 5), (4, 4)), ((4, 4), (2, 9)), ((2, 9), (1, 2))]
+    ((2, 9), (1, 2))
+
+# Problem with comments<a id="sec-6"></a>
+
+When code changes, comments should change manually. It's not good. So, make the code self-document instead.
+
+For example, the below code is a simple example..
+
+```C++
+#include <fplus/fplus.hpp>
+#include <iostream>
+#include <sstream>
+
+int str2int(const std::string& str) {
+  int ret;
+  std::istringstream(str) >> ret;
+  return ret;
+}
+
+int main() {
+  const std::string input{"1,5,4,7,2,2,3"};
+  const auto str_list = fplus::split(',', false, input);
+  const auto int_list = fplus::transform(str2int, str_list);
+  // the following line sums up the list
+  const auto prod_result = fplus::reduce(std::plus<int>(), 0, int_list);
+  std::cout << fplus::show(prod_result) << std::endl;
+}
+```
+
+    24
+
+It can be refactored to make it more self-documenting.
+
+```C++
+auto sum(const std::vector<int>& containers) {
+  return fplus::reduce(std::plus<int>(), 0, containers);
+}
+auto prod(const std::vector<int>& containers) {
+  return fplus::reduce(std::multiplies<int>(), 1, containers);
+}
+int main() {
+  const std::vector<int> nums{1, 2, 3, 4};
+  const auto sum_result = sum(nums);
+  std::cout << fplus::show(sum_result) << std::endl;
+
+  const auto prod_result = prod(nums);
+  std::cout << fplus::show(prod_result) << std::endl;
+  return 0;
+}
+```
+
+    10
+    24
