@@ -12,6 +12,8 @@
   - [Example](#sec-5-1)
 - [Problem with comments](#sec-6)
 - [High level expressiveness](#sec-7)
+- [Currying](#sec-8)
+  - [Another Example](#sec-8-1)
 
 
 # Introduction<a id="sec-1"></a>
@@ -427,3 +429,164 @@ std::cout << "Longest edge: " << fplus::show(edge_length(result))
 ```
 
     Longest edge: 7.07107, Two points are ((4, 4), (2, 9))
+
+# Currying<a id="sec-8"></a>
+
+Suppose there is a function, `add : (Int, Int) -> Int`
+
+```C++
+auto add(auto first, auto second) { return first + second; };
+```
+
+we can create a function `add_3 : Int -> Int`
+
+```C++
+auto add_3(auto second) { return add(3, second); };
+```
+
+Here is an example:
+
+```C++
+#include <iostream>
+
+std::function<int(int)> add_curried(int a) {
+  return [a](int b) {
+    return a + b;
+  };
+}
+
+int main() {
+  std::cout << add_curried(8)(5) << "\n";
+}
+```
+
+    13
+
+Notice `add_curried : Int -> (Int -> Int)` then it is same as `Int -> Int -> Int`.
+
+The following code does not work because
+
+-   `transform : ((a -> b), [a]) -> [b]`
+-   `keep_if : ((a -> Bool), [a]) -> [a]`
+
+```C++
+constexpr bool is_even(int x) {
+  return x % 2 == 0;
+}
+
+std::vector<std::vector<int>> xss{{0, 1, 2}, {3, 4, 5}};
+auto result = fplus::transform(keep_if(is_even), xss);
+```
+
+We need some currying here.
+
+Something like this
+
+`keep_if_curry : (a -> Bool) -> [a] -> [a]` `transform_curry : (a -> b) -> [a] -> [b]`
+
+You can use a lambda function to define it. Or, there is a `fplus::fwd` such as
+
+`fwd::keep_if : (a -> Bool) -> [a] -> [a]`
+
+```C++
+using namespace fplus;
+auto is_even = [](int val) -> bool { return val % 2 == 0; };
+std::vector<std::vector<int>> xss{{0, 1, 2}, {3, 4, 5}};
+
+auto result = transform(fwd::keep_if(is_even), xss);
+std::cout << show(result) << std::endl;
+
+auto square = [](int val) {return val * val; };
+result = transform(fwd::transform(square), xss);
+std::cout << show(result) << std::endl;
+
+```
+
+    [[0, 2], [4]]
+    [[0, 1, 4], [9, 16, 25]]
+
+Using purely STL,
+
+```C++
+#include <algorithm>
+#include <iostream>
+#include <iterator>
+#include <vector>
+
+template <typename Container, typename Function>
+Container transform(Function f, const Container& input) {
+  Container out;
+  std::transform(std::begin(input), std::end(input), std::back_inserter(out),
+                 f);
+  return out;
+}
+
+template <typename Function>
+auto transform_fwd(Function f) {
+
+  return [&](const auto& input) {
+    return transform(f, input);
+  };
+}
+
+template <typename T>
+void show(const std::vector<T>& input) {
+  int i = 0;
+  std::cout << "[";
+  for (const T& elem : input) {
+    if (i == input.size() - 1) {
+      std::cout << elem;
+    } else {
+      std::cout << elem << ", ";
+    }
+    i++;
+  }
+  std::cout << "]";
+}
+
+template <typename T>
+void show(const std::vector<std::vector<T>>& input) {
+  for (const std::vector<T>& elem : input) {
+    show(elem);
+  }
+}
+
+int main() {
+  std::vector<std::vector<int>> xss{{0, 1, 2}, {3, 4, 5}};
+  show(xss);
+  std::cout << "\n-------------------\n";
+
+  auto square = [](int val) { return val * val; };
+  auto result = transform(transform_fwd(square), xss);
+
+  show(result);
+
+  return 0;
+}
+```
+
+    [0, 1, 2][3, 4, 5]
+    -------------------
+    [0, 1, 4][9, 16, 25]
+
+## Another Example<a id="sec-8-1"></a>
+
+Find a fully curried version of add<sub>four</sub>
+
+`add_four : Int -> Int -> Int -> Int`
+
+```C++
+auto add_four = [](auto first) {
+  return [first](auto second) {
+    return [first, second](auto third) {
+      return [first, second, third](auto fourth) {
+        return first + second + third + fourth;
+      };
+    };
+  };
+};
+
+std::cout << add_four(1)(2)(3)(4) << std::endl;
+```
+
+    10
