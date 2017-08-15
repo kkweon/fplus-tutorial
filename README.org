@@ -2,6 +2,9 @@
 #+TITLE: Functional Programming in C++ w/ FPLUS
 
 * Introduction
+All of stuff come from
+- [[https:www.udemy.com/functional-programming-using-cpp][Udemy Functional Programming C++]]
+- [[https:github.com/Dobiasd/FunctionalPlus][Functional Plus]] 
   
 ** Installation
 - Go to https://github.com/Dobiasd/FunctionalPlus
@@ -39,8 +42,8 @@
 
 * Correctness follows from expressive 
 
-- Define a =map= function ((a -> b), [a]) -> [a]
-- Define a =keep_if= function ((a -> b), [a]) -> [a]
+- Define a =map= function ((a -> a), [a]) -> [a]
+- Define a =keep_if= function ((a -> Bool), [a]) -> [a]
 #+BEGIN_SRC C++ :exports both :results output
   #include <algorithm>
   #include <fplus/fplus.hpp>

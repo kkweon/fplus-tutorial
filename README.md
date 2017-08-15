@@ -11,6 +11,11 @@
 
 # Introduction<a id="sec-1"></a>
 
+All of stuff come from
+
+-   [Udemy Functional Programming C++](https:www.udemy.com/functional-programming-using-cpp)
+-   [Functional Plus](https:github.com/Dobiasd/FunctionalPlus)
+
 ## Installation<a id="sec-1-1"></a>
 
 -   Go to <https://github.com/Dobiasd/FunctionalPlus>
@@ -46,8 +51,8 @@ int main() {
 
 # Correctness follows from expressive<a id="sec-2"></a>
 
--   Define a `map` function ((a -> b), [a]) -> [a]
--   Define a `keep_if` function ((a -> b), [a]) -> [a]
+-   Define a `map` function ((a -> a), [a]) -> [a]
+-   Define a `keep_if` function ((a -> Bool), [a]) -> [a]
 
 ```C++
 #include <algorithm>
