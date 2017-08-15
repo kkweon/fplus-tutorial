@@ -7,6 +7,7 @@
   - [map](#sec-3-2)
   - [Function](#sec-3-3)
   - [Why useful?](#sec-3-4)
+- [Parse and Product](#sec-4)
 
 
 # Introduction<a id="sec-1"></a>
@@ -203,3 +204,70 @@ we get
     template <typename Container,
         typename X = typename Container::value_type>
     X join(const X& separator, const Container& xs)
+
+# Parse and Product<a id="sec-4"></a>
+
+Given
+
+-   a string of "1, 2, 3, 4, 5, 6"
+-   return the int value of 1 \* 2 \* 3 \* 4 \* 5 \* 6
+
+```C++
+#include <fplus/fplus.hpp>
+#include <string>
+#include <iostream>
+#include <sstream>
+
+int str2int(const std::string& str) {
+  int result;
+  std::istringstream(str) >> result;
+  return result;
+}
+int main() {
+  const std::string input {"1, 5, 4, 7, 2, 2, 3"};
+  const auto str_list = fplus::split(',', false, input);
+  const auto int_list = fplus::transform(str2int, str_list);
+  std::cout << fplus::show(int_list) << "\n";
+
+  const auto product = fplus::reduce(std::multiplies<int>(), 1, int_list);
+  std::cout << product << "\n";
+}
+```
+
+    [1, 5, 4, 7, 2, 2, 3]
+    1680
+
+What about addition?
+
+```C++
+#include <fplus/fplus.hpp>
+#include <string>
+#include <iostream>
+#include <sstream>
+
+template<typename T>
+struct addition {
+  constexpr T operator()(T left, T right) {
+    return left + right;
+  }
+};
+
+int str2int(const std::string& str) {
+  int result;
+  std::istringstream(str) >> result;
+  return result;
+}
+
+int main() {
+  const std::string input {"1, 5, 4"};
+  const auto str_list = fplus::split(',', false, input);
+  const auto int_list = fplus::transform(str2int, str_list);
+  std::cout << fplus::show(int_list) << "\n";
+
+  const auto sum = fplus::reduce(addition<int>(), 0, int_list);
+  std::cout << sum << "\n";
+}
+```
+
+    [1, 5, 4]
+    10
