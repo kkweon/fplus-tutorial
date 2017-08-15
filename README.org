@@ -334,7 +334,6 @@ Find the longest edge
 : [((1, 2), (7, 3)), ((7, 3), (6, 5)), ((6, 5), (4, 4)), ((4, 4), (2, 9)), ((2, 9), (1, 2))]
 : ((2, 9), (1, 2))
 
-
 * Problem with comments
 
 When code changes, comments should change manually.
@@ -400,3 +399,36 @@ auto prod(const std::vector<int>& containers) {
 : 24
 
 
+* High level expressiveness
+
+Let's refactor the previous polygon distance function.
+
+Given a set of points (polygon), find the longest edge.
+
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <vector> :flags -std=c++1z
+  typedef std::pair<float, float> Point;
+  typedef std::vector<Point> Polygon;
+
+  auto get_distance = [](const Point& a, const Point& b) -> float {
+    auto square = [](auto val) { return val * val; };
+    auto x_diff = a.first - b.second;
+    auto y_diff = a.second - b.second;
+    return std::sqrt(square(x_diff) + square(y_diff));
+  };
+  auto edge_length =
+      [&get_distance](const std::pair<Point, Point>& two_points) -> float {
+    return get_distance(two_points.first, two_points.second);
+  };
+  auto get_edges = [](const Polygon& polygon) {
+    return fplus::overlapping_pairs_cyclic(polygon);
+  };
+
+  Polygon polygon{{1, 2}, {7, 3}, {6, 5}, {4, 4}, {2, 9}};
+  const auto result = fplus::maximum_on(edge_length, get_edges(polygon));
+
+  std::cout << "Longest edge: " << fplus::show(edge_length(result))
+            << ", Two points are " << fplus::show(result) << std::endl;
+#+END_SRC
+
+#+RESULTS:
+: Longest edge: 7.07107, Two points are ((4, 4), (2, 9))

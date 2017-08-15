@@ -11,6 +11,7 @@
 - [Lambda Expression](#sec-5)
   - [Example](#sec-5-1)
 - [Problem with comments](#sec-6)
+- [High level expressiveness](#sec-7)
 
 
 # Introduction<a id="sec-1"></a>
@@ -393,3 +394,36 @@ int main() {
 
     10
     24
+
+# High level expressiveness<a id="sec-7"></a>
+
+Let's refactor the previous polygon distance function.
+
+Given a set of points (polygon), find the longest edge.
+
+```C++
+typedef std::pair<float, float> Point;
+typedef std::vector<Point> Polygon;
+
+auto get_distance = [](const Point& a, const Point& b) -> float {
+  auto square = [](auto val) { return val * val; };
+  auto x_diff = a.first - b.second;
+  auto y_diff = a.second - b.second;
+  return std::sqrt(square(x_diff) + square(y_diff));
+};
+auto edge_length =
+    [&get_distance](const std::pair<Point, Point>& two_points) -> float {
+  return get_distance(two_points.first, two_points.second);
+};
+auto get_edges = [](const Polygon& polygon) {
+  return fplus::overlapping_pairs_cyclic(polygon);
+};
+
+Polygon polygon{{1, 2}, {7, 3}, {6, 5}, {4, 4}, {2, 9}};
+const auto result = fplus::maximum_on(edge_length, get_edges(polygon));
+
+std::cout << "Longest edge: " << fplus::show(edge_length(result))
+          << ", Two points are " << fplus::show(result) << std::endl;
+```
+
+    Longest edge: 7.07107, Two points are ((4, 4), (2, 9))
