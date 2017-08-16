@@ -1,4 +1,4 @@
-#+PROPERTY: header-args :flags -std=c++1z :exports both :results output
+#+PROPERTY: header-args :flags -std=c++1z :exports both :results output :cache yes
 #+TITLE: Functional Programming in C++ w/ FPLUS
 
 * Introduction
@@ -133,12 +133,16 @@ vector<int> xs;     // xs: [Int]
 pair<int, float> p; // p : (Int, Float)
 #+END_SRC
 
+#+RESULTS:
+
 ** map
 In C++, ~map~ is like an ~dict~ in Python
 
 #+BEGIN_SRC C++
 map<string, int> dict; // dict : Map String Int
 #+END_SRC
+
+#+RESULTS:
 
 ** Function
 
@@ -147,11 +151,15 @@ int foo(string value);                              // foo : String -> Int
 ContainerIn transform(F f, const ContainerOut& xs); // transform : ((a -> b), [a]) -> [b]
 #+END_SRC
 
+#+RESULTS:
+
 
 Previous ~keep_if~ can be written as 
 #+BEGIN_SRC C++
 Container keep_if(F f, Container& container); // keep_if : ((a -> Bool), [a]) -> [a]
 #+END_SRC
+
+#+RESULTS:
 
 ** Why useful?
 Suppose I want a ~concat~ function as below.
@@ -159,11 +167,15 @@ Suppose I want a ~concat~ function as below.
 concat(["Bar", "Baz", "Buz"], ";") == "bar;baz;buz"
 #+END_SRC
 
+#+RESULTS:
+
 We know 
 
 #+BEGIN_SRC C++ :exports both
 concat(vector<string> container, string delim); // 
 #+END_SRC
+
+#+RESULTS:
 
 If we type the following annotation in the API browser,
 =(vector<string>, string)->string=
@@ -373,12 +385,16 @@ It can be refactored to make it more self-documenting.
   }
 #+END_SRC
 
+#+RESULTS: sum-function
+
 #+NAME: prod-function
 #+BEGIN_SRC C++ :exports none
 auto prod(const std::vector<int>& containers) {
   return fplus::reduce(std::multiplies<int>(), 1, containers);
 }
 #+END_SRC
+
+#+RESULTS: prod-function
 
 #+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <vector> :flags -std=c++1z :noweb yes
   <<sum-function>>
@@ -438,12 +454,16 @@ Suppose there is a function, ~add : (Int, Int) -> Int~
   std::function<int(int, int)> add(auto first, auto second) { return first + second; };
 #+END_SRC
 
+#+RESULTS:
+
 we can create a function ~add_3 : Int -> Int~ 
 #+BEGIN_SRC C++ :exports code
   std::function<std::function<int(int)>> add_3(auto second) {
     return add(3, second);
   };
 #+END_SRC
+
+#+RESULTS:
 
 Here is an example:
 
@@ -472,6 +492,8 @@ The following code does not work because
   std::vector<std::vector<int>> xss{{0, 1, 2}, {3, 4, 5}};
   auto result = fplus::transform(keep_if(is_even), xss);
 #+END_SRC
+
+#+RESULTS:
 
 We need some currying here.
 
@@ -599,3 +621,189 @@ Find a fully curried version of add_four
 
 #+RESULTS:
 : 10
+* Forward Applications
+
+Look at the previous sequential codes.
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <string> <sstream>
+auto str2int = [](auto str) -> int {
+  int ret;
+  std::istringstream(str) >> ret;
+  return ret;
+};
+auto product = [](auto container) -> int {
+  return fplus::reduce(std::multiplies<int>(), 1, container);
+};
+const std::string input = "1,5,2,3";
+const auto parts = fplus::split(',', false, input);
+const auto numbers = fplus::transform(str2int, parts);
+const auto result = product(numbers);
+std::cout << result << "\n";
+#+END_SRC
+
+#+RESULTS:
+: 30
+
+It can be re written in a line but ugly.
+
+
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <string> <sstream>
+  auto str2int = fplus::read_value_unsafe<int>;
+  auto product = [](auto container) -> int {
+    return fplus::reduce(std::multiplies<int>(), 1, container);
+  };
+  const std::string input = "1,5,2,3";
+  const auto result =
+      product(fplus::transform(str2int, fplus::split(',', false, input)));
+  std::cout << result << "\n";
+#+END_SRC
+
+#+RESULTS:
+: 30
+
+
+Using ~fwd::~
+
+
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <string> <sstream> :flags -std=c++1z
+  using namespace fplus;
+  auto str2int = fplus::read_value_unsafe<int>;
+  const std::string input = "1,5,2,3";
+  const auto result = fwd::apply(input
+                                 , fwd::split(',', false)
+                                 , fwd::transform(str2int)
+                                 , fwd::product());
+  std::cout << result << "\n";
+#+END_SRC
+
+#+RESULTS:
+: 30
+
+
+Notes
+
+- ~fwd::apply : (a, (a -> b), (b -> c), (c -> d)) -> d~
+- ~fwd::product : () -> [a] -> a~
+
+
+** Exercises
+
+*** Exercise 1
+Let's go back to the longest edge code and convert it to the forward application style.
+
+
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <vector> :flags -std=c++1z
+  using namespace fplus;
+
+  typedef std::pair<float, float> Point;
+  typedef std::vector<Point> Polygon;
+
+  auto get_distance = [](const Point& a, const Point& b) -> float {
+    auto square = [](auto val) { return val * val; };
+    auto x_diff = a.first - b.second;
+    auto y_diff = a.second - b.second;
+    return std::sqrt(square(x_diff) + square(y_diff));
+  };
+  auto edge_length =
+      [&get_distance](const std::pair<Point, Point>& two_points) -> float {
+    return get_distance(two_points.first, two_points.second);
+  };
+  auto get_edges = [](const Polygon& polygon) {
+    return fplus::overlapping_pairs_cyclic(polygon);
+  };
+
+  Polygon polygon{{1, 2}, {7, 3}, {6, 5}, {4, 4}, {2, 9}};
+  const auto result =
+      fwd::apply(polygon, get_edges, fwd::maximum_on(edge_length));
+
+  std::cout << "Longest edge: " << fplus::show(edge_length(result))
+            << ", Two points are " << fplus::show(result) << std::endl;
+#+END_SRC
+
+#+RESULTS:
+: Longest edge: 7.07107, Two points are ((4, 4), (2, 9))
+
+*** Exercise 2
+
+Invent a long chain of function applications in 3 styles
+
+- Assign intermediate values to variables
+- Nested function calls
+- Forward application styles
+
+Softmax function
+
+Given : "1, 2, 3"
+-> split(,) : ["1", "2", "3"]
+-> str2int : [1, 2, 3]
+-> exp : [exp(1), exp(2), exp(3)]
+-> / sum(exp) : [exp(1) / sum(exp(i)), exp(2) / sum(exp(i)), exp(3) / sum(exp(i))]
+-> get the argmax
+
+**** Assign Intermediate values
+     
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <string> <cmath>
+  const std::string input = "1,2,3";
+  const auto split = fplus::split(',', false, input);
+  const auto nums = fplus::transform(fplus::read_value_unsafe<double>, split);
+  const auto exps = fplus::transform([](auto val){ return std::exp(val); }, nums);
+  const auto exp_sum = fplus::sum(exps);
+  const auto probs = fplus::transform([&](auto val) { return val / exp_sum; }, exps);
+  const auto arg_max = fplus::maximum_idx(probs);
+
+  std::cout << "Maximum index: " << fplus::show(arg_max) << ", Maximum value: " << probs[arg_max] << "\n";
+#+END_SRC
+
+#+RESULTS:
+: Maximum index: 2, Maximum value: 0.665241
+
+**** Nested Function Calls
+     
+Ugly as well.
+
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <string>
+  const std::string input = "1,2,3";
+  const auto exps =
+      fplus::transform([](auto val) { return std::exp(val); },
+                       fplus::transform(fplus::read_value_unsafe<int>,
+                                        fplus::split(',', false, input)));
+  const auto exp_sum = fplus::sum(exps);
+  const auto probs =
+      fplus::transform([&](auto val) { return val / exp_sum; }, exps);
+  const auto arg_max = fplus::maximum_idx(probs);
+
+  std::cout << "Maximum index: " << fplus::show(arg_max)
+            << ", Maximum value: " << probs[arg_max] << "\n";
+#+END_SRC
+
+#+RESULTS:
+: Maximum index: 2, Maximum value: 0.665241
+
+**** Forward Application
+
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <string> <cmath>
+  using namespace fplus;
+  auto get_max_idx_and_value = [](const auto& containers) {
+    auto max_id = fwd::apply(containers, fwd::maximum_idx());
+    auto max_value = containers[max_id];
+    return std::make_pair(max_id, max_value);
+  };
+ 
+  const std::string input = "1,2,3";
+  const auto exps = fwd::apply(input
+                                , fwd::split(',', false)
+                                , fwd::transform(read_value_unsafe<int>)
+                                , fwd::transform([](auto val) {return std::exp(val); }));
+
+  const auto exp_sum = fplus::sum(exps);
+
+  const auto [arg_max, max_value] = fwd::apply(exps
+                                               , fwd::transform([&](auto val) { return val / exp_sum; })
+                                               , get_max_idx_and_value);
+
+
+  std::cout << "Maximum index: " << arg_max
+            << ", Maximum value: " << max_value << "\n";
+#+END_SRC
+
+#+RESULTS:
+: Maximum index: 2, Maximum value: 0.665241

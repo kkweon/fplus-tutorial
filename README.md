@@ -14,6 +14,10 @@
 - [High level expressiveness](#sec-7)
 - [Currying](#sec-8)
   - [Another Example](#sec-8-1)
+- [Forward Applications](#sec-9)
+  - [Exercises](#sec-9-1)
+    - [Exercise 1](#sec-9-1-1)
+    - [Exercise 2](#sec-9-1-2)
 
 
 # Introduction<a id="sec-1"></a>
@@ -591,3 +595,174 @@ std::cout << add_four(1)(2)(3)(4) << std::endl;
 ```
 
     10
+
+# Forward Applications<a id="sec-9"></a>
+
+Look at the previous sequential codes.
+
+```C++
+auto str2int = [](auto str) -> int {
+  int ret;
+  std::istringstream(str) >> ret;
+  return ret;
+};
+auto product = [](auto container) -> int {
+  return fplus::reduce(std::multiplies<int>(), 1, container);
+};
+const std::string input = "1,5,2,3";
+const auto parts = fplus::split(',', false, input);
+const auto numbers = fplus::transform(str2int, parts);
+const auto result = product(numbers);
+std::cout << result << "\n";
+```
+
+    30
+
+It can be re written in a line but ugly.
+
+```C++
+auto str2int = fplus::read_value_unsafe<int>;
+auto product = [](auto container) -> int {
+  return fplus::reduce(std::multiplies<int>(), 1, container);
+};
+const std::string input = "1,5,2,3";
+const auto result =
+    product(fplus::transform(str2int, fplus::split(',', false, input)));
+std::cout << result << "\n";
+```
+
+    30
+
+Using `fwd::`
+
+```C++
+using namespace fplus;
+auto str2int = fplus::read_value_unsafe<int>;
+const std::string input = "1,5,2,3";
+const auto result = fwd::apply(input
+                               , fwd::split(',', false)
+                               , fwd::transform(str2int)
+                               , fwd::product());
+std::cout << result << "\n";
+```
+
+    30
+
+Notes
+
+-   `fwd::apply : (a, (a -> b), (b -> c), (c -> d)) -> d`
+-   `fwd::product : () -> [a] -> a`
+
+## Exercises<a id="sec-9-1"></a>
+
+### Exercise 1<a id="sec-9-1-1"></a>
+
+Let's go back to the longest edge code and convert it to the forward application style.
+
+```C++
+using namespace fplus;
+
+typedef std::pair<float, float> Point;
+typedef std::vector<Point> Polygon;
+
+auto get_distance = [](const Point& a, const Point& b) -> float {
+  auto square = [](auto val) { return val * val; };
+  auto x_diff = a.first - b.second;
+  auto y_diff = a.second - b.second;
+  return std::sqrt(square(x_diff) + square(y_diff));
+};
+auto edge_length =
+    [&get_distance](const std::pair<Point, Point>& two_points) -> float {
+  return get_distance(two_points.first, two_points.second);
+};
+auto get_edges = [](const Polygon& polygon) {
+  return fplus::overlapping_pairs_cyclic(polygon);
+};
+
+Polygon polygon{{1, 2}, {7, 3}, {6, 5}, {4, 4}, {2, 9}};
+const auto result =
+    fwd::apply(polygon, get_edges, fwd::maximum_on(edge_length));
+
+std::cout << "Longest edge: " << fplus::show(edge_length(result))
+          << ", Two points are " << fplus::show(result) << std::endl;
+```
+
+    Longest edge: 7.07107, Two points are ((4, 4), (2, 9))
+
+### Exercise 2<a id="sec-9-1-2"></a>
+
+Invent a long chain of function applications in 3 styles
+
+-   Assign intermediate values to variables
+-   Nested function calls
+-   Forward application styles
+
+Softmax function
+
+Given : "1, 2, 3" -> split(,) : ["1", "2", "3"] -> str2int : [1, 2, 3] -> exp : [exp(1), exp(2), exp(3)] -> / sum(exp) : [exp(1) / sum(exp(i)), exp(2) / sum(exp(i)), exp(3) / sum(exp(i))] -> get the argmax
+
+1.  Assign Intermediate values
+
+    ```C++
+    const std::string input = "1,2,3";
+    const auto split = fplus::split(',', false, input);
+    const auto nums = fplus::transform(fplus::read_value_unsafe<double>, split);
+    const auto exps = fplus::transform([](auto val){ return std::exp(val); }, nums);
+    const auto exp_sum = fplus::sum(exps);
+    const auto probs = fplus::transform([&](auto val) { return val / exp_sum; }, exps);
+    const auto arg_max = fplus::maximum_idx(probs);
+    
+    std::cout << "Maximum index: " << fplus::show(arg_max) << ", Maximum value: " << probs[arg_max] << "\n";
+    ```
+    
+        Maximum index: 2, Maximum value: 0.665241
+
+2.  Nested Function Calls
+
+    Ugly as well.
+    
+    ```C++
+    const std::string input = "1,2,3";
+    const auto exps =
+        fplus::transform([](auto val) { return std::exp(val); },
+                         fplus::transform(fplus::read_value_unsafe<int>,
+                                          fplus::split(',', false, input)));
+    const auto exp_sum = fplus::sum(exps);
+    const auto probs =
+        fplus::transform([&](auto val) { return val / exp_sum; }, exps);
+    const auto arg_max = fplus::maximum_idx(probs);
+    
+    std::cout << "Maximum index: " << fplus::show(arg_max)
+              << ", Maximum value: " << probs[arg_max] << "\n";
+    ```
+    
+        Maximum index: 2, Maximum value: 0.665241
+
+3.  Forward Application
+
+    ```C++
+    using namespace fplus;
+    auto get_max_idx_and_value = [](const auto& containers) {
+      auto max_id = fwd::apply(containers, fwd::maximum_idx());
+      auto max_value = containers[max_id];
+      return std::make_pair(max_id, max_value);
+    };
+    
+    const std::string input = "1,2,3";
+    const auto exps = fwd::apply(input
+                                  , fwd::split(',', false)
+                                  , fwd::transform(read_value_unsafe<int>)
+                                  , fwd::transform([](auto val) {return std::exp(val); }));
+    
+    const auto exp_sum = fplus::sum(exps);
+    
+    const auto [arg_max, max_value] = fwd::apply(exps
+                                                 , fwd::transform([&](auto val) { return val / exp_sum; })
+                                                 , get_max_idx_and_value);
+    
+    
+    std::cout << "Maximum index: " << arg_max
+              << ", Maximum value: " << max_value << "\n";
+    ```
+    
+        Maximum index: 2, Maximum value: 0.665241
