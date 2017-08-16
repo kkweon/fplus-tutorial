@@ -3,6 +3,7 @@ auto
 *.html
 *.pdf
 *.tex
+*.cpp
 # Created by https://www.gitignore.io/api/c++
 
 ### C++ ###

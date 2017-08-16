@@ -807,3 +807,293 @@ Ugly as well.
 
 #+RESULTS:
 : Maximum index: 2, Maximum value: 0.665241
+
+* Programming Challenges: SQL analogy
+
+Define a program like a SQL
+#+BEGIN_SRC C++ :flags -std=c++1z :exports code
+  #include <fplus/fplus.hpp>
+
+  struct User {
+    std::string name;
+    std::string country;
+    std::size_t visits;
+  };
+
+  std::string get_country(const User& u) {
+    return u.country;
+  }
+
+  std::size_t get_visits(const User& u) {
+    return u.visits;
+  }
+
+  int main() {
+    Using Users = std::vector<User>;
+    Users users = {
+      {"Nicole", "GER", 2},
+      {"Justin", "USA", 1},
+      {"Rachel", "USA", 5},
+      {"Robert", "USA", 6},
+      {"Stefan", "GER", 4}
+    };
+  }
+#+END_SRC
+
+#+RESULTS:
+
+
+
+In SQL
+
+
+#+NAME: usertable
+| Nicole | GER | 2 |
+| Justin | USA | 1 |
+| Rachel | USA | 5 |
+| Robert | USA | 6 |
+| Stefan | GER | 4 |
+
+#+begin_src sqlite :db /tmp/rip.db :var orgtable=usertable :exports results :results silence
+drop table if exists users;
+create table users(name varchar(10), country varchar(10), visits int);
+.mode csv users
+.import $orgtable users
+#+end_src
+
+#+RESULTS:
+
+#+BEGIN_SRC sqlite :var users=usertable :db /tmp/rip.db :colnames yes :results output table :exports both
+SELECT country, sum(visits)
+FROM users
+group by country;
+#+END_SRC
+
+#+RESULTS:
+| country | sum(visits) |
+|---------+-------------|
+| GER     |           6 |
+| USA     |          12 |
+
+#+BEGIN_SRC C++ :flags -std=c++1z :results output
+  #include <fplus/fplus.hpp>
+
+  struct User {
+    std::string name;
+    std::string country;
+    std::size_t visits;
+  };
+
+  std::string get_country(const User& u) { return u.country; }
+  std::size_t get_visits(const User& u) { return u.visits; }
+
+  int main() {
+    using namespace fplus;
+    using Users = std::vector<User>;
+
+    Users users = {{"Nicole", "GER", 2},
+                   {"Justin", "USA", 1},
+                   {"Rachel", "USA", 5},
+                   {"Robert", "USA", 6},
+                   {"Stefan", "GER", 4}};
+    auto visit_sum = [](const auto& users) {
+      return fwd::apply(users, fwd::transform(get_visits), fwd::sum());
+    };
+
+    // O(N^2)
+    const auto result = fwd::apply(users,
+                                   fwd::group_globally_on_labeled(get_country),
+                                   fwd::transform(fwd::transform_snd(visit_sum)));
+    std::cout << show_cont(result) << std::endl;
+
+    // O(N * logN)
+    const auto result_fast =
+        fwd::apply(users,
+                   fwd::sort_on(get_country),
+                   fwd::group_on_labeled(get_country),
+                   fwd::transform(fwd::transform_snd(visit_sum)));
+    std::cout << show_cont(result_fast) << std::endl;
+  }
+#+END_SRC
+
+#+RESULTS:
+: [(GER, 6), (USA, 12)]
+: [(GER, 6), (USA, 12)]
+
+* Function Compositions
+
+~fwd::apply : (a, (a -> b), (b -> c)) -> c~ can be written in the form of
+
+- ~x : a~
+- ~f : a -> b~
+- ~g : b -> c~
+
+
+then ~y = apply(x, f, g);~
+
+In FunctionalPlus, there is a ~fwd::compose : ((a -> b), (b -> c)) -> (a -> c)~.
+
+Hence, ~fwd::compose(f, g)(x) = g(f(x))~
+
+#+BEGIN_SRC C++ :exports code
+const auto f_and_g = fwd::compose(f, g);
+y = f_and_g(x);
+#+END_SRC
+
+** Example
+
+Instead of doing  
+
+#+BEGIN_SRC C++ :includes <fplus/fplus.hpp> :exports code
+  using namespace fplus;
+
+  auto str2int = read_value_unsafe<int>;
+  auto square = [](auto val) { return val * val; };
+
+  std::vector<std::string> inputs = {"1", "2", "3"};
+  const auto result = fwd::apply(inputs
+                                 , fwd::transform(str2int)
+                                 , fwd::transform(square)
+                                 , fwd::sum());
+  std::cout << show(result) << std::endl;
+#+END_SRC
+
+
+do 
+#+BEGIN_SRC C++ :includes <fplus/fplus.hpp> :exports code
+  using namespace fplus;
+
+  auto str2int = read_value_unsafe<int>;
+  auto square = [](auto val) { return val * val; };
+  auto parse_and_square = fwd::compose(str2int, square);
+
+  std::vector<std::string> inputs = {"1", "2", "3"};
+
+  const auto result = fwd::apply(inputs
+                                 , fwd::transform(parse_and_square)
+                                 , fwd::sum());
+  std::cout << show(result) << std::endl;
+#+END_SRC
+
+#+RESULTS:
+: 14
+
+** Exercise
+   
+Remember
+
+str -> split -> str2int -> product
+
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <string> <sstream> :flags -std=c++1z :exports code
+  using namespace fplus;
+  auto str2int = fplus::read_value_unsafe<int>;
+  const std::string input = "1,5,2,3";
+  const auto result = fwd::apply(input
+                                 , fwd::split(',', false)
+                                 , fwd::transform(str2int)
+                                 , fwd::product());
+  std::cout << result << "\n";
+#+END_SRC
+
+#+RESULTS:
+: 30
+
+
+Let's make it cleaner using function compositions.
+
+
+#+BEGIN_SRC C++ :includes <iostream> <fplus/fplus.hpp> <string> <sstream> :flags -std=c++1z :exports code
+  using namespace fplus;
+  auto str2int = fplus::read_value_unsafe<int>;
+  auto parse_int_and_product = fwd::compose(fwd::split(',', false)
+                                            , fwd::transform(str2int)
+                                            , fwd::product());
+
+  const std::string input = "1,5,2,3";
+  std::cout << parse_int_and_product(input) << "\n";
+#+END_SRC
+
+#+RESULTS:
+: 30
+* Command Line Interact
+
+Dealing with CLI is just same as you would do normally in the standard way.
+
+Save this file as shout.cpp
+#+BEGIN_SRC C++ :tangle shout.cpp :includes <fplus/fplus.hpp> <iostream> :exports code
+  using namespace fplus;
+  const std::string input(std::istreambuf_iterator<char>(std::cin.rdbuf()),
+                          std::istreambuf_iterator<char>());
+  std::string output = to_upper_case(input);
+  std::cout << output << std::endl;
+#+END_SRC
+
+#+BEGIN_SRC bash :exports both :results output
+clang++ -std=c++14 shout.cpp -o shout
+echo "hi this is not lower case" | ./shout
+#+END_SRC
+
+#+RESULTS:
+: HI THIS IS NOT LOWER CASE
+: 
+
+
+Save this file as sortlines.cpp
+
+#+BEGIN_SRC C++ :tangle sortlines.cpp :includes <fplus/fplus.hpp> <iostream> :exports code
+  using namespace fplus;
+  const std::string input(std::istreambuf_iterator<char>(std::cin.rdbuf()),
+                          std::istreambuf_iterator<char>());
+  std::string output = fwd::apply(input, fwd::split_lines(false), fwd::sort(),
+                                  fwd::join(std::string("\n")));
+  std::cout << output << std::endl;
+#+END_SRC
+
+
+#+BEGIN_SRC bash :exports both 
+clang++ -std=c++14 sortlines.cpp -o sortlines
+printf "programming\nrocks\nfunctional" | ./sortlines
+#+END_SRC
+
+#+RESULTS:
+: functional
+: programming
+: rocks
+
+** Exercise
+
+Make the codes more expressive.
+
+Here ~cmd_line_interact : (String -> String) -> ()~
+
+#+BEGIN_SRC C++ :tangle shout_better.cpp :exports code
+  #include <fplus/fplus.hpp>
+  #include <iostream>
+
+  using namespace fplus;
+
+  template <typename Function>
+  void cmd_line_interact(Function f) {
+    const std::string input(std::istreambuf_iterator<char>(std::cin.rdbuf()),
+                            std::istreambuf_iterator<char>());
+    const auto result = fwd::apply(input,
+                                   fwd::split_lines(false),
+                                   fwd::sort(),
+                                   fwd::join(std::string("\n")),
+                                   f());
+
+    std::cout << result << std::endl;
+  }
+
+  int main() { cmd_line_interact(fwd::to_upper_case); }
+#+END_SRC
+
+#+BEGIN_SRC bash :exports both
+clang++ -std=c++14 shout_better.cpp -o shout_better
+printf "programming\nrocks\nfunctional" | ./shout_better
+#+END_SRC
+
+#+RESULTS:
+: FUNCTIONAL
+: PROGRAMMING
+: ROCKS

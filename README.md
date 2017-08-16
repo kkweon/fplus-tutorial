@@ -18,6 +18,12 @@
   - [Exercises](#sec-9-1)
     - [Exercise 1](#sec-9-1-1)
     - [Exercise 2](#sec-9-1-2)
+- [Programming Challenges: SQL analogy](#sec-10)
+- [Function Compositions](#sec-11)
+  - [Example](#sec-11-1)
+  - [Exercise](#sec-11-2)
+- [Command Line Interact](#sec-12)
+  - [Exercise](#sec-12-1)
 
 
 # Introduction<a id="sec-1"></a>
@@ -766,3 +772,261 @@ Given : "1, 2, 3" -> split(,) : ["1", "2", "3"] -> str2int : [1, 2, 3] -> exp : 
     ```
     
         Maximum index: 2, Maximum value: 0.665241
+
+# Programming Challenges: SQL analogy<a id="sec-10"></a>
+
+Define a program like a SQL
+
+```C++
+#include <fplus/fplus.hpp>
+
+struct User {
+  std::string name;
+  std::string country;
+  std::size_t visits;
+};
+
+std::string get_country(const User& u) {
+  return u.country;
+}
+
+std::size_t get_visits(const User& u) {
+  return u.visits;
+}
+
+int main() {
+  Using Users = std::vector<User>;
+  Users users = {
+    {"Nicole", "GER", 2},
+    {"Justin", "USA", 1},
+    {"Rachel", "USA", 5},
+    {"Robert", "USA", 6},
+    {"Stefan", "GER", 4}
+  };
+}
+```
+
+In SQL
+
+| Nicole | GER | 2 |
+| Justin | USA | 1 |
+| Rachel | USA | 5 |
+| Robert | USA | 6 |
+| Stefan | GER | 4 |
+
+```sqlite
+SELECT country, sum(visits)
+FROM users
+group by country;
+```
+
+| country | sum(visits) |
+|------- |----------- |
+| GER     | 6           |
+| USA     | 12          |
+
+```C++
+#include <fplus/fplus.hpp>
+
+struct User {
+  std::string name;
+  std::string country;
+  std::size_t visits;
+};
+
+std::string get_country(const User& u) { return u.country; }
+std::size_t get_visits(const User& u) { return u.visits; }
+
+int main() {
+  using namespace fplus;
+  using Users = std::vector<User>;
+
+  Users users = {{"Nicole", "GER", 2},
+                 {"Justin", "USA", 1},
+                 {"Rachel", "USA", 5},
+                 {"Robert", "USA", 6},
+                 {"Stefan", "GER", 4}};
+  auto visit_sum = [](const auto& users) {
+    return fwd::apply(users, fwd::transform(get_visits), fwd::sum());
+  };
+
+  // O(N^2)
+  const auto result = fwd::apply(users,
+                                 fwd::group_globally_on_labeled(get_country),
+                                 fwd::transform(fwd::transform_snd(visit_sum)));
+  std::cout << show_cont(result) << std::endl;
+
+  // O(N * logN)
+  const auto result_fast =
+      fwd::apply(users,
+                 fwd::sort_on(get_country),
+                 fwd::group_on_labeled(get_country),
+                 fwd::transform(fwd::transform_snd(visit_sum)));
+  std::cout << show_cont(result_fast) << std::endl;
+}
+```
+
+    [(GER, 6), (USA, 12)]
+    [(GER, 6), (USA, 12)]
+
+# Function Compositions<a id="sec-11"></a>
+
+`fwd::apply : (a, (a -> b), (b -> c)) -> c` can be written in the form of
+
+-   `x : a`
+-   `f : a -> b`
+-   `g : b -> c`
+
+then `y = apply(x, f, g);`
+
+In FunctionalPlus, there is a `fwd::compose : ((a -> b), (b -> c)) -> (a -> c)`.
+
+Hence, `fwd::compose(f, g)(x) = g(f(x))`
+
+```C++
+const auto f_and_g = fwd::compose(f, g);
+y = f_and_g(x);
+```
+
+## Example<a id="sec-11-1"></a>
+
+Instead of doing
+
+```C++
+using namespace fplus;
+
+auto str2int = read_value_unsafe<int>;
+auto square = [](auto val) { return val * val; };
+
+std::vector<std::string> inputs = {"1", "2", "3"};
+const auto result = fwd::apply(inputs
+                               , fwd::transform(str2int)
+                               , fwd::transform(square)
+                               , fwd::sum());
+std::cout << show(result) << std::endl;
+```
+
+do
+
+```C++
+using namespace fplus;
+
+auto str2int = read_value_unsafe<int>;
+auto square = [](auto val) { return val * val; };
+auto parse_and_square = fwd::compose(str2int, square);
+
+std::vector<std::string> inputs = {"1", "2", "3"};
+
+const auto result = fwd::apply(inputs
+                               , fwd::transform(parse_and_square)
+                               , fwd::sum());
+std::cout << show(result) << std::endl;
+```
+
+## Exercise<a id="sec-11-2"></a>
+
+Remember
+
+str -> split -> str2int -> product
+
+```C++
+using namespace fplus;
+auto str2int = fplus::read_value_unsafe<int>;
+const std::string input = "1,5,2,3";
+const auto result = fwd::apply(input
+                               , fwd::split(',', false)
+                               , fwd::transform(str2int)
+                               , fwd::product());
+std::cout << result << "\n";
+```
+
+Let's make it cleaner using function compositions.
+
+```C++
+using namespace fplus;
+auto str2int = fplus::read_value_unsafe<int>;
+auto parse_int_and_product = fwd::compose(fwd::split(',', false)
+                                          , fwd::transform(str2int)
+                                          , fwd::product());
+
+const std::string input = "1,5,2,3";
+std::cout << parse_int_and_product(input) << "\n";
+```
+
+# Command Line Interact<a id="sec-12"></a>
+
+Dealing with CLI is just same as you would do normally in the standard way.
+
+Save this file as shout.cpp
+
+```C++
+using namespace fplus;
+const std::string input(std::istreambuf_iterator<char>(std::cin.rdbuf()),
+                        std::istreambuf_iterator<char>());
+std::string output = to_upper_case(input);
+std::cout << output << std::endl;
+```
+
+```bash
+clang++ -std=c++14 shout.cpp -o shout
+echo "hi this is not lower case" | ./shout
+```
+
+    HI THIS IS NOT LOWER CASE
+
+Save this file as sortlines.cpp
+
+```C++
+using namespace fplus;
+const std::string input(std::istreambuf_iterator<char>(std::cin.rdbuf()),
+                        std::istreambuf_iterator<char>());
+std::string output = fwd::apply(input, fwd::split_lines(false), fwd::sort(),
+                                fwd::join(std::string("\n")));
+std::cout << output << std::endl;
+```
+
+```bash
+clang++ -std=c++14 sortlines.cpp -o sortlines
+printf "programming\nrocks\nfunctional" | ./sortlines
+```
+
+    functional
+    programming
+    rocks
+
+## Exercise<a id="sec-12-1"></a>
+
+Make the codes more expressive.
+
+Here `cmd_line_interact : (String -> String) -> ()`
+
+```C++
+#include <fplus/fplus.hpp>
+#include <iostream>
+
+using namespace fplus;
+
+template <typename Function>
+void cmd_line_interact(Function f) {
+  const std::string input(std::istreambuf_iterator<char>(std::cin.rdbuf()),
+                          std::istreambuf_iterator<char>());
+  const auto result = fwd::apply(input,
+                                 fwd::split_lines(false),
+                                 fwd::sort(),
+                                 fwd::join(std::string("\n")),
+                                 f());
+
+  std::cout << result << std::endl;
+}
+
+int main() { cmd_line_interact(fwd::to_upper_case); }
+```
+
+```bash
+clang++ -std=c++14 shout_better.cpp -o shout_better
+printf "programming\nrocks\nfunctional" | ./shout_better
+```
+
+    FUNCTIONAL
+    PROGRAMMING
+    ROCKS
