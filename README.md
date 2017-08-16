@@ -435,29 +435,24 @@ std::cout << "Longest edge: " << fplus::show(edge_length(result))
 Suppose there is a function, `add : (Int, Int) -> Int`
 
 ```C++
-auto add(auto first, auto second) { return first + second; };
+std::function<int(int, int)> add(auto first, auto second) { return first + second; };
 ```
 
 we can create a function `add_3 : Int -> Int`
 
 ```C++
-auto add_3(auto second) { return add(3, second); };
+std::function<std::function<int(int)>> add_3(auto second) {
+  return add(3, second);
+};
 ```
 
 Here is an example:
 
 ```C++
-#include <iostream>
-
-std::function<int(int)> add_curried(int a) {
-  return [a](int b) {
-    return a + b;
-  };
-}
-
-int main() {
-  std::cout << add_curried(8)(5) << "\n";
-}
+auto add_curried = [](auto first) {
+  return [first](auto second) { return first + second; };
+};
+std::cout << add_curried(8)(5) << "\n";
 ```
 
     13
@@ -555,6 +550,8 @@ int main() {
   std::vector<std::vector<int>> xss{{0, 1, 2}, {3, 4, 5}};
   show(xss);
   std::cout << "\n-------------------\n";
+  std::cout << "\nChange to \n";
+  std::cout << "\n-------------------\n";
 
   auto square = [](int val) { return val * val; };
   auto result = transform(transform_fwd(square), xss);
@@ -566,6 +563,10 @@ int main() {
 ```
 
     [0, 1, 2][3, 4, 5]
+    -------------------
+    
+    Change to 
+    
     -------------------
     [0, 1, 4][9, 16, 25]
 
